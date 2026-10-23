@@ -377,19 +377,32 @@ $('#gateForm').addEventListener('submit', async (e) => {
 
 const joinKey = (n) => `alarabi.join.${n}`;
 async function checkBusy() {
-  if (!M.table || sessionStorage.getItem(joinKey(M.table))) return;
+  if (!M.table) return;
   try {
-    const res = await fetch(`/api/public/tables/${M.table}?device=${encodeURIComponent(device)}`);
-    const st = await res.json();
-    if (!st.busy || st.mine) return;
-    $('#busyNo').textContent = M.table;
-    $('#busy').hidden = false;
+    if (!sessionStorage.getItem(joinKey(M.table))) {
+      const res = await fetch(`/api/public/tables/${M.table}?device=${encodeURIComponent(device)}`);
+      const st = await res.json();
+      if (st.busy && !st.mine) {
+        $('#busyNo').textContent = M.table;
+        $('#busy').hidden = false;
+        return; // ما بنقعد لحد ما يختار "أنا معهم"
+      }
+    }
+    sit();
   } catch { /* بدون نت: بنكمّل عادي */ }
 }
+
+// بنسجّل إنه هالجوال قاعد على الطاولة، وبنضل نجدّد طول ما المنيو مفتوح
+function sit() {
+  if (!M.table) return;
+  fetch(`/api/public/tables/${M.table}/sit`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ device }) }).catch(() => {});
+}
+setInterval(() => { if (document.visibilityState === 'visible' && $('#busy').hidden && $('#gate').hidden) sit(); }, 5 * 60e3);
 
 $('#busyJoin').addEventListener('click', () => {
   try { sessionStorage.setItem(joinKey(M.table), '1'); } catch { /* */ }
   $('#busy').hidden = true;
+  sit();
 });
 $('#busyOther').addEventListener('click', () => {
   $('#busy').hidden = true;

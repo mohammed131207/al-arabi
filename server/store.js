@@ -384,6 +384,8 @@ export function pay(id, { method = 'cash', received, app, payer, ref } = {}) {
       method, rec, payApp, payerName, payRef, now(), currentDay().id, id);
     // نداءات "بدنا الحساب" لهالطاولة خلصت
     if (i.kind === 'table') run('UPDATE calls SET done_at = ? WHERE table_no = ? AND done_at IS NULL', now(), i.table_no);
+    // دفعوا وقاموا: الطاولة صارت فاضية للي بعدهم
+    if (i.kind === 'table') run('DELETE FROM seats WHERE table_no = ?', i.table_no);
     return id;
   });
 }
@@ -500,15 +502,34 @@ export function rejectOrder(id) {
 }
 
 // الطاولة مشغولة إذا عليها فاتورة مفتوحة أو طلب لسا ما انقبل. mine: هالجوال طالب عليها من قبل
+// الجوال بيضل "قاعد" على الطاولة طول ما المنيو مفتوح (بيبعت كل 5 دقايق)، وبينحسب قاعد 45 دقيقة بعد آخر مرة
+const SEAT_TTL = 45 * 60e3;
+const seatSince = () => new Date(Date.now() - SEAT_TTL).toISOString();
+
 export function tableStatus(no, device) {
   no = Number(no);
   if (!tableExists(no)) return { exists: false };
+  device = clean(device, 64);
+  const others = get('SELECT device FROM seats WHERE table_no = ? AND device != ? AND at > ? LIMIT 1', no, device, seatSince());
   const busy = Boolean(get("SELECT id FROM invoices WHERE status = 'open' AND kind = 'table' AND table_no = ? LIMIT 1", no)
-    || get("SELECT id FROM orders WHERE status = 'new' AND table_no = ? LIMIT 1", no));
+    || get("SELECT id FROM orders WHERE status = 'new' AND table_no = ? LIMIT 1", no)
+    || others);
   const since = new Date(Date.now() - 12 * 3600e3).toISOString();
-  const mine = Boolean(device && get("SELECT id FROM orders WHERE table_no = ? AND device = ? AND status != 'rejected' AND created_at > ? LIMIT 1",
-    no, clean(device, 64), since));
+  const mine = Boolean(device && (get('SELECT device FROM seats WHERE table_no = ? AND device = ? AND at > ?', no, device, seatSince())
+    || get("SELECT id FROM orders WHERE table_no = ? AND device = ? AND status != 'rejected' AND created_at > ? LIMIT 1", no, device, since)));
   return { exists: true, busy, mine };
+}
+
+// الجوال قعد على هالطاولة (وبيقوم عن أي طاولة تانية)
+export function sit(no, device) {
+  no = Number(no);
+  device = clean(device, 64);
+  if (!tableExists(no) || !device) fail('رقم الطاولة مش موجود');
+  tx(() => {
+    run('DELETE FROM seats WHERE device = ? AND table_no != ?', device, no);
+    run('INSERT INTO seats (table_no, device, at) VALUES (?, ?, ?) ON CONFLICT(table_no, device) DO UPDATE SET at = excluded.at', no, device, now());
+    run('DELETE FROM seats WHERE at < ?', new Date(Date.now() - 24 * 3600e3).toISOString());
+  });
 }
 
 export function deviceOrders(device) {

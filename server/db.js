@@ -135,6 +135,14 @@ db.exec(`
     token      TEXT PRIMARY KEY,
     created_at TEXT NOT NULL
   );
+
+  -- مين قاعد على أي طاولة (جوال الزبون)، عشان اللي بعده يعرف إنها مشغولة حتى لو لسا ما طلبوا
+  CREATE TABLE IF NOT EXISTS seats (
+    table_no INTEGER NOT NULL,
+    device   TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    PRIMARY KEY (table_no, device)
+  );
 `);
 
 // إضافات على الجداول بعد أول نسخة (الصور)
