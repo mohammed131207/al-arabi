@@ -499,6 +499,18 @@ export function rejectOrder(id) {
   return order(id);
 }
 
+// الطاولة مشغولة إذا عليها فاتورة مفتوحة أو طلب لسا ما انقبل. mine: هالجوال طالب عليها من قبل
+export function tableStatus(no, device) {
+  no = Number(no);
+  if (!tableExists(no)) return { exists: false };
+  const busy = Boolean(get("SELECT id FROM invoices WHERE status = 'open' AND kind = 'table' AND table_no = ? LIMIT 1", no)
+    || get("SELECT id FROM orders WHERE status = 'new' AND table_no = ? LIMIT 1", no));
+  const since = new Date(Date.now() - 12 * 3600e3).toISOString();
+  const mine = Boolean(device && get("SELECT id FROM orders WHERE table_no = ? AND device = ? AND status != 'rejected' AND created_at > ? LIMIT 1",
+    no, clean(device, 64), since));
+  return { exists: true, busy, mine };
+}
+
 export function deviceOrders(device) {
   const since = new Date(Date.now() - 12 * 3600e3).toISOString();
   return all('SELECT * FROM orders WHERE device = ? AND created_at > ? ORDER BY id DESC LIMIT 10', clean(device, 64), since).map(parseOrder);

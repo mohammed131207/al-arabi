@@ -76,6 +76,7 @@ const P = {
   download: 'M12 4v12M7 11l5 5 5-5M5 20h14',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  bellOff: 'M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l2 2H8M10 20a2 2 0 0 0 4 0M3 3l18 18',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15.5 9.5h.01',
   back: 'M9 6l6 6-6 6',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
@@ -128,24 +129,45 @@ export function ask({ title, fields = [], confirm = 'حفظ', danger = false, bo
 export const confirmBox = (title, body, confirm = 'تأكيد', danger = true) =>
   ask({ title, body: `<p style="margin:0">${body}</p>`, confirm, danger }).then((v) => v !== null);
 
-// صوت تنبيه بدون ملفات (طلب جديد أو نداء)
+// صوت تنبيه عالي بدون ملفات، بيتسمع بزحمة المطعم: جرس حاد بنغمتين (طلب جديد) أو أربع نغمات (نداء)
 let ac;
-export function beep(pattern = [880, 660, 990]) {
+let out;
+function audio() {
+  if (!ac) {
+    ac = new AudioContext();
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -12;
+    comp.ratio.value = 6;
+    out = ac.createGain();
+    out.gain.value = 1;
+    out.connect(comp).connect(ac.destination);
+  }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+// المتصفح ما بيسمح بالصوت قبل أول كبسة بالصفحة
+export const audioReady = () => Boolean(ac) && ac.state === 'running';
+export function unlockAudio() { try { audio(); } catch { /* */ } }
+
+export function beep(kind = 'order') {
   try {
-    ac ||= new AudioContext();
-    if (ac.state === 'suspended') ac.resume();
-    pattern.forEach((f, i) => {
-      const o = ac.createOscillator();
-      const g = ac.createGain();
-      o.type = 'triangle';
-      o.frequency.value = f;
-      const t = ac.currentTime + i * 0.16;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
-      o.connect(g).connect(ac.destination);
-      o.start(t);
-      o.stop(t + 0.16);
+    const a = audio();
+    const tones = kind === 'call' ? [988, 740, 988, 740] : [1319, 988, 1319, 988, 1319, 988];
+    tones.forEach((f, i) => {
+      const t = a.currentTime + i * 0.2;
+      for (const [type, mult, vol] of [['square', 1, 0.5], ['sawtooth', 2, 0.18]]) {
+        const o = a.createOscillator();
+        const g = a.createGain();
+        o.type = type;
+        o.frequency.value = f * mult;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+        g.gain.setValueAtTime(vol, t + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
+        o.connect(g).connect(out);
+        o.start(t);
+        o.stop(t + 0.2);
+      }
     });
   } catch { /* المتصفح منع الصوت */ }
 }

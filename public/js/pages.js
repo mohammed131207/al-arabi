@@ -557,6 +557,7 @@ export function renderSettings(ctx) {
           <label class="field"><span>طول الشعار بالفاتورة (ملم)</span><input class="input num" name="receiptLogoMm" value="${s.receiptLogoMm}" inputmode="numeric" style="width:100px" dir="ltr"></label>
           <label class="switch" style="grid-column:1/-1"><input type="checkbox" name="receiptLogo" ${s.receiptLogo ? 'checked' : ''}>اطبع الشعار براس الفاتورة</label>
           <label class="switch" style="grid-column:1/-1"><input type="checkbox" name="printOnPay" ${s.printOnPay ? 'checked' : ''}>اطبع الفاتورة لحالها لما يندفع الحساب</label>
+          <label class="switch" style="grid-column:1/-1"><input type="checkbox" name="kitchenOnAccept" ${s.kitchenOnAccept !== false ? 'checked' : ''}>اطبع تذكرة المطبخ لحالها لما تقبل طلب طاولة من الجوال</label>
           <div class="row" style="grid-column:1/-1;justify-content:flex-end">
             <button class="btn" type="button" id="testPrint">${icon('printer')}فاتورة تجربة</button>
             <button class="btn btn-brand" type="submit">حفظ</button></div>
@@ -672,7 +673,7 @@ export function renderSettings(ctx) {
   $('#fPrint').onsubmit = (e) => {
     e.preventDefault();
     const f = e.target;
-    saveSettings({ paper, receiptLogoMm: Number(f.receiptLogoMm.value), receiptLogo: f.receiptLogo.checked, printOnPay: f.printOnPay.checked });
+    saveSettings({ paper, receiptLogoMm: Number(f.receiptLogoMm.value), receiptLogo: f.receiptLogo.checked, printOnPay: f.printOnPay.checked, kitchenOnAccept: f.kitchenOnAccept.checked });
   };
   $('#testPrint').onclick = () => {
     const f = $('#fPrint');

@@ -52,6 +52,8 @@ body.cashier { height: 100vh; overflow: hidden; }
 .clock { font-weight: 600; color: var(--cream); font-size: 15px; }
 .top .icon-btn { color: #CDBFAE; }
 .top .icon-btn:hover { background: var(--char-2); color: var(--cream); }
+.top .sound-btn.off { color: #F0533F; }
+.top .sound-btn.warn { color: var(--char); background: var(--ember); animation: pulse 1.2s infinite; }
 
 .view { min-height: 0; }
 

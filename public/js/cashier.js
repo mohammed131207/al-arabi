@@ -1,5 +1,5 @@
 // شاشة الكاشير: نص للطاولات والأصناف، ونص للفاتورة
-import { $, $$, esc, money, fmtTime, fmtDateTime, localDate, minutesSince, toast, icon, ask, confirmBox, beep } from './common.js';
+import { $, $$, esc, money, fmtTime, fmtDateTime, localDate, minutesSince, toast, icon, ask, confirmBox, beep, unlockAudio, audioReady } from './common.js';
 import { printReceipt, printKitchen } from './print.js';
 import { renderInvoices, renderDay, renderReports, renderMenu, renderSettings } from './pages.js';
 
@@ -131,7 +131,7 @@ socket.on('orders', (list) => {
   const fresh = list.filter((o) => !S.orders.some((x) => x.id === o.id));
   S.orders = list;
   if (fresh.length) {
-    beep();
+    ring('order');
     toast(`طلب جديد من طاولة ${fresh.map((o) => o.table).join('، ')}`);
   }
   renderPos();
@@ -140,7 +140,7 @@ socket.on('calls', (list) => {
   const fresh = list.filter((c) => !S.calls.some((x) => x.id === c.id));
   S.calls = list;
   if (fresh.length) {
-    beep([660, 660, 880]);
+    ring('call');
     fresh.forEach((c) => toast(`طاولة ${c.table}: ${c.kind === 'bill' ? 'بدهم الحساب' : 'بنادوا الجرسون'}`));
   }
   renderPos();
@@ -214,6 +214,7 @@ function renderTop() {
   $('#nav').innerHTML = NAV.map(([v, ic, label]) => `
     <button type="button" data-view="${v}" ${S.view === v ? 'aria-current="page"' : ''} title="${label}">${icon(ic)}<span>${label}</span></button>`).join('');
   $('#lockBtn').innerHTML = icon('lock');
+  renderSoundBtn();
   renderToday();
   tickClock();
 }
@@ -763,8 +764,39 @@ function acceptOrder(id) {
     if (o) { S.sel = { kind: 'table', table: o.table }; S.line = null; }
     toast(`انضاف طلب طاولة ${inv.table} للفاتورة`, 'ok');
     renderPos();
+    // تذكرة المطبخ بتطلع لحالها مع القبول (بتتسكّر من الإعدادات)
+    if (S.settings.kitchenOnAccept !== false) {
+      const k = await api(`/invoices/${inv.id}/kitchen`, { method: 'POST' });
+      applyInvoice(k.invoice);
+      renderPos();
+      if (k.lines.length) await printKitchen(k.invoice, k.lines, S.settings);
+    }
   });
 }
+
+// ───── صوت التنبيه: بيرن عالي، وبيرجع يرن كل 8 ثواني لحد ما تتعامل مع الطلب أو النداء ─────
+
+const SOUND_KEY = 'alarabi.sound';
+let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch { return true; } })();
+
+function ring(kind) { if (soundOn) beep(kind); }
+
+function renderSoundBtn() {
+  const b = $('#soundBtn');
+  if (!b) return;
+  const blocked = soundOn && !audioReady();
+  b.innerHTML = icon(soundOn ? 'bell' : 'bellOff');
+  b.classList.toggle('off', !soundOn);
+  b.classList.toggle('warn', blocked);
+  b.title = !soundOn ? 'الصوت مسكّر، اكبس لتشغيله' : blocked ? 'اكبس هون ليشتغل صوت التنبيه' : 'صوت التنبيه شغّال، اكبس لتسكيره';
+  b.setAttribute('aria-label', b.title);
+}
+
+setInterval(() => {
+  if (S.token && (S.orders.length || S.calls.length)) ring(S.orders.length ? 'order' : 'call');
+  renderSoundBtn();
+}, 8e3);
+document.addEventListener('pointerdown', () => { if (soundOn && !audioReady()) { unlockAudio(); setTimeout(renderSoundBtn, 200); } });
 
 async function rejectOrder(id) {
   const ok = await confirmBox('رفض الطلب', 'الزبون رح يشوف إن طلبه انرفض ويحكي مع الجرسون. متأكد؟', 'ارفض');
@@ -783,6 +815,14 @@ document.addEventListener('click', (e) => {
   const nav = t.closest('#nav [data-view]');
   if (nav) return go(nav.dataset.view);
   if (t.closest('#lockBtn')) return lock();
+  if (t.closest('#soundBtn')) {
+    soundOn = !soundOn || !audioReady() ? true : false;
+    try { localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off'); } catch { /* */ }
+    if (soundOn) { unlockAudio(); setTimeout(() => beep('order'), 150); }
+    renderSoundBtn();
+    toast(soundOn ? 'صوت التنبيه شغّال' : 'صوت التنبيه مسكّر');
+    return;
+  }
   const tab = t.closest('[data-tab]');
   if (tab) { S.tab = tab.dataset.tab; renderTabs(); renderCatalog(); return; }
   const tb = t.closest('[data-table]');

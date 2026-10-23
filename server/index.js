@@ -102,6 +102,7 @@ pub.post('/orders', wrap((req) => {
 }));
 
 pub.get('/devices/:device/orders', wrap((req) => S.deviceOrders(req.params.device)));
+pub.get('/tables/:no', wrap((req) => S.tableStatus(req.params.no, req.query.device)));
 
 pub.post('/calls', wrap((req) => {
   S.createCall(req.body?.table, req.body?.kind);

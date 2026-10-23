@@ -97,7 +97,7 @@ function topBlocks() {
   const list = M.orders.filter((o) => o.table === M.table).slice(0, 3);
   const STATUS = {
     new: ['وصل طلبك للكاشير', 'عم يستنى تأكيد'],
-    accepted: ['انقبل طلبك', 'عم يتجهّز'],
+    accepted: ['تم قبول طلبك', 'وسيتم تحضيره'],
     rejected: ['ما انقبل الطلب', 'احكي مع الجرسون لو سمحت'],
   };
   return `
@@ -289,7 +289,7 @@ async function sendOrder() {
     if (currentCat()) location.hash = '';
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast('وصل طلبك للكاشير، صحتين', 'ok');
+    toast('وصل طلبك للكاشير، استنى تأكيده', 'ok');
   } catch (e) {
     $('#cartErr').textContent = e.message;
     btn.disabled = false;
@@ -358,7 +358,7 @@ function showGate() {
   setTimeout(() => i.focus(), 50);
 }
 
-$('#gateForm').addEventListener('submit', (e) => {
+$('#gateForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const n = Number($('#gateInput').value.replace(/\D/g, ''));
   if (!(n >= 1 && n <= M.tables)) {
@@ -370,6 +370,34 @@ $('#gateForm').addEventListener('submit', (e) => {
   history.replaceState(null, '', `?t=${n}${location.hash}`);
   $('#gate').hidden = true;
   render();
+  checkBusy();
+});
+
+// ───── الطاولة مشغولة: إذا عليها ناس وهالجوال مش معهم، بنسأله قبل ما يطلب ─────
+
+const joinKey = (n) => `alarabi.join.${n}`;
+async function checkBusy() {
+  if (!M.table || sessionStorage.getItem(joinKey(M.table))) return;
+  try {
+    const res = await fetch(`/api/public/tables/${M.table}?device=${encodeURIComponent(device)}`);
+    const st = await res.json();
+    if (!st.busy || st.mine) return;
+    $('#busyNo').textContent = M.table;
+    $('#busy').hidden = false;
+  } catch { /* بدون نت: بنكمّل عادي */ }
+}
+
+$('#busyJoin').addEventListener('click', () => {
+  try { sessionStorage.setItem(joinKey(M.table), '1'); } catch { /* */ }
+  $('#busy').hidden = true;
+});
+$('#busyOther').addEventListener('click', () => {
+  $('#busy').hidden = true;
+  M.table = null;
+  store.set('alarabi.table', null);
+  render();
+  showGate();
+  $('#gateInput').value = '';
 });
 
 // ───── البداية والتحديث المباشر ─────
@@ -396,7 +424,7 @@ socket.on('connect', () => { socket.emit('device', device); loadOrders().then(()
 socket.on('order', (o) => {
   M.orders = [o, ...M.orders.filter((x) => x.id !== o.id)];
   if (!document.querySelector('dialog[open]') && !M.q) render();
-  if (o.status === 'accepted') toast('انقبل طلبك، عم يتجهّز', 'ok');
+  if (o.status === 'accepted') toast('تم قبول طلبك وسيتم تحضيره', 'ok');
   if (o.status === 'rejected') toast('ما انقبل الطلب، احكي مع الجرسون', 'err');
 });
 socket.on('menu', (m) => {
@@ -421,4 +449,5 @@ socket.on('menu', (m) => {
   await loadOrders();
   render();
   if (!M.table) showGate();
+  else checkBusy();
 })();

@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   receiptLogo: true,
   receiptLogoMm: 30,      // طول الشعار بالفاتورة
   printOnPay: true,       // اطبع الفاتورة لحالها لما يندفع الحساب
+  kitchenOnAccept: true,  // اطبع تذكرة المطبخ لحالها لما الكاشير يقبل طلب الجوال
   acceptOrders: true,     // الزباين بيقدروا يطلبوا من جوالاتهم
   publicUrl: '',          // رابط الموقع للـ QR (فاضي = عنوان الجهاز على الشبكة)
   payApps: ['بنك', 'محفظة', 'جوال باي'], // وين بيحوّلوا الزباين لما يدفعوا بتطبيق
