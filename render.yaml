@@ -11,6 +11,12 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "24"
+      # توقيت المطعم: التواريخ والتقارير ويوم الخميس (الضاني) على توقيت فلسطين
+      - key: TZ
+        value: Asia/Gaza
+      # صاحي بس من 9 الصبح لـ 2 بالليل، عشان ما يخلّص ساعات Render المجانية على باقي الخدمات
+      - key: KEEP_AWAKE_HOURS
+        value: "9-2"
       - key: TURSO_DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN

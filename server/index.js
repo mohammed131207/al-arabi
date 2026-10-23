@@ -306,9 +306,16 @@ server.listen(PORT, () => {
   console.log('');
 });
 
-// Render المجاني بينيّم السيرفر بعد 15 دقيقة بدون زيارات، فبنزوره كل 10 دقايق عشان يضل صاحي
+// Render المجاني بينيّم السيرفر بعد 15 دقيقة بدون زيارات، فبنزوره كل 10 دقايق عشان يضل صاحي.
+// KEEP_AWAKE_HOURS="9-2": بس بساعات الدوام (توقيت المطعم)، عشان ساعات Render المجانية (750 بالشهر للحساب كله) تكفي
+const [awakeFrom, awakeTo] = (process.env.KEEP_AWAKE_HOURS || '').split('-').map(Number);
+const awakeNow = () => {
+  if (!Number.isInteger(awakeFrom) || !Number.isInteger(awakeTo)) return true;
+  const h = new Date().getHours();
+  return awakeFrom <= awakeTo ? h >= awakeFrom && h < awakeTo : h >= awakeFrom || h < awakeTo;
+};
 if (PUBLIC_URL && process.env.KEEP_AWAKE !== '0') {
-  setInterval(() => { fetch(`${PUBLIC_URL}/healthz`).catch(() => {}); }, 10 * 60e3).unref();
+  setInterval(() => { if (awakeNow()) fetch(`${PUBLIC_URL}/healthz`).catch(() => {}); }, 10 * 60e3).unref();
 }
 
 // نسخة احتياطية بعد دقيقة من كل تشغيل، وتنظيف النسخ الأقدم من 60 يوم (على الاستضافة البيانات أصلاً محفوظة بـ Turso)
