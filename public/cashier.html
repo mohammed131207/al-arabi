@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>الكاشير — مطعم العربي</title>
+  <link rel="icon" href="/img/mark.png">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/cashier.css">
+</head>
+<body class="cashier">
+
+  <!-- الدخول -->
+  <section class="login" id="login" hidden>
+    <div class="login-card">
+      <img class="login-logo" src="/img/logo.png" alt="مطعم العربي">
+      <p class="login-sub">اكتب رمز الكاشير</p>
+      <div class="pin-dots" id="pinDots" aria-live="polite"></div>
+      <div class="keypad" id="keypad"></div>
+      <p class="login-err" id="loginErr" role="alert"></p>
+    </div>
+  </section>
+
+  <div class="app" id="app" hidden>
+    <header class="top">
+      <div class="brand">
+        <img src="/img/mark.png" alt="">
+        <strong id="brandName">مطعم العربي</strong>
+      </div>
+      <nav class="nav" id="nav" aria-label="أقسام البرنامج"></nav>
+      <div class="top-end">
+        <div class="today" id="today" title="مبيعات اليوم"></div>
+        <span class="live" id="live" title="الاتصال"><i></i></span>
+        <span class="clock num" id="clock"></span>
+        <button class="icon-btn" id="lockBtn" type="button" title="قفل الشاشة" aria-label="قفل الشاشة"></button>
+      </div>
+    </header>
+
+    <!-- البيع -->
+    <main class="view pos" data-view="pos">
+      <section class="catalog" aria-label="الطاولات والأصناف">
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="tab-body" id="tabBody"></div>
+      </section>
+
+      <section class="bill" id="bill" aria-label="الفاتورة"></section>
+    </main>
+
+    <main class="view page" data-view="invoices" hidden></main>
+    <main class="view page" data-view="day" hidden></main>
+    <main class="view page" data-view="reports" hidden></main>
+    <main class="view page" data-view="menu" hidden></main>
+    <main class="view page" data-view="settings" hidden></main>
+  </div>
+
+  <script src="/vendor/qrcode.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/cashier.js"></script>
+</body>
+</html>
